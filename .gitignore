@@ -1,0 +1,6 @@
+.*
+!.gitignore
+*.py[co]
+*~
+*.swp
+*.bak
