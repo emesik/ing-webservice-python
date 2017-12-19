@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import namedtuple
 from datetime import datetime
 import random
 import re
@@ -12,7 +13,6 @@ class WSClient(object):
     cert = None
     ca_cert = None
     key = None
-    account_number = None
     company = ''
     username = ''
     timeout = 300
@@ -21,7 +21,6 @@ class WSClient(object):
         self.cert = kwargs.get('cert', self.cert)
         self.ca_cert = kwargs.get('ca_cert', self.ca_cert)
         self.key = kwargs.get('key', self.key)
-        self.account_number = kwargs.get('account_number', self.account_number)
         self.company = kwargs.get('company', self.company)
         self.username = kwargs.get('username', self.username)
         self.timeout = kwargs.get('timeout', self.timeout)
@@ -56,7 +55,7 @@ class WSClient(object):
         rnd = ''.join([random.choice('123456789ABCDEFGHJKLMNQRSTUVWXYZ') for i in range(16)])
         return '%s%s' % (prefix, rnd)
 
-    def get_account_report(self, start_date, end_date):
+    def get_history(self, account_number, start_date, end_date):
         method = self.client.service.GetAccountReport
         doctype = self.client.get_type('ns1:GetAccountReportRequestType')
         data = {
@@ -67,7 +66,7 @@ class WSClient(object):
                         'SchCrit': {
                             'AcctId': {
                                 'EQ': {
-                                    'IBAN': self.account_number,
+                                    'IBAN': account_number,
                                     }
                                 },
                             'AcctRptValDt': {
@@ -85,11 +84,11 @@ class WSClient(object):
         resp = method(document['Document'], _soapheaders=[self.get_headers()])
         return History(resp.Rpt)
 
-    def transfer_domestic(self, transfers, initiator=''):
+    def transfer_domestic(self, account_number, transfers, initiator=''):
         method = self.client.service.DomesticTransfer
         doctype = self.client.get_type('ns1:TransferRequestType')
         _country = re.compile(r'^[A-Z]{2}')
-        dmstc_from_acc = _country.sub('', self.account_number)
+        dmstc_from_acc = _country.sub('', account_number)
         now = datetime.now()
         to_send = []
         for txf in transfers:
@@ -171,11 +170,27 @@ class WSClient(object):
         return [(sts.TxSts, sts.AccptncDtTm) for sts in resp.OrgnlPmtInfAndSts[0].TxInfAndSts]
 
 
+Transfer = namedtuple('Transfer', ['id',
+                                   'type',
+                                   'status',
+                                   'amount',
+                                   'currency',
+                                   'posting_date',
+                                   'operation_date',
+                                   'account_number',
+                                   'account_holder_name',
+                                   'account_holder_address',
+                                   'account_holder_country',
+                                   'transaction_name'])
+
+
 class History(object):
-    incoming = []
-    outgoing = []
+    payments = None
+    charges = None
 
     def __init__(self, report):
+        self.payments = []
+        self.charges = []
         self.process_transactions(report[0].Ntry)
 
     def process_transactions(self, txns):
@@ -186,12 +201,12 @@ class History(object):
             txndata['posting_date'] = txn.BookgDt.DtTm
             txndata['operation_date'] = txn.ValDt.DtTm
             details = txn.NtryDtls[0].TxDtls[0]
-            txndata['id'] = details.Refs.TxId
+            txndata['id'] = details.Refs.InstrId
             txndata['amount'] = txn.Amt._value_1
             txndata['currency'] = txn.Amt.Ccy
-            txndata['description'] = "\n".join(details.RmtInf.Ustrd)
-            creditor = getattr(details.RltdPties, 'CdtrAcct', None) # for outgoing
-            debitor = getattr(details.RltdPties, 'DbtrAcct', None)  # for incoming
+            txndata['transaction_name'] = "\n".join(details.RmtInf.Ustrd)
+            creditor = getattr(details.RltdPties, 'CdtrAcct', None) # for charges
+            debitor = getattr(details.RltdPties, 'DbtrAcct', None)  # for payments
             if bool(creditor) == bool(debitor):
                 raise ValueError("Transfer {id} is both incoming and outgoing".format(**txndata))
             role = creditor or debitor
@@ -205,6 +220,6 @@ class History(object):
                 txndata['account_holder_address'] = ''
                 txndata['account_holder_country'] = ''
             if creditor:
-                self.outgoing.append(txndata)
+                self.charges.append(Transfer(**txndata))
             else:
-                self.incoming.append(txndata)
+                self.payments.append(Transfer(**txndata))
