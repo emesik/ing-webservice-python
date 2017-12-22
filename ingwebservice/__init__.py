@@ -4,6 +4,7 @@ from datetime import datetime
 import random
 import re
 from requests import Session
+from unidecode import unidecode
 import zeep
 from zeep.client import Client
 from zeep.transports import Transport
@@ -88,6 +89,7 @@ class WSClient(object):
         method = self.client.service.DomesticTransfer
         doctype = self.client.get_type('ns1:TransferRequestType')
         _country = re.compile(r'^[A-Z]{2}')
+        _charfilter = re.compile(r'[^A-Za-z0-9/\-+()/\']')
         dmstc_from_acc = _country.sub('', account_number)
         now = datetime.now()
         to_send = []
@@ -95,7 +97,8 @@ class WSClient(object):
             dmstc_to_acc = _country.sub('', txf['account_number'])
             transfer = {
                 'PmtId': {
-                    'EndToEndId': txf.get('description', 'not provided')[:32],
+                    'EndToEndId': _charfilter.sub('',
+                            unidecode(txf.get('description', 'not provided').replace(u' ', u'_')))[:32],
                     },
                 'Amt': {
                     'InstdAmt': {
