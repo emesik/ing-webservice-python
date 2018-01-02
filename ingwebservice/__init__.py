@@ -128,7 +128,7 @@ class WSClient(object):
                         }
                     },
                 'RmtInf': {
-                    'Ustrd': txf.get('description', ''),
+                    'Ustrd': txf.get('description', '')[:140].strip(),
                     }
                 }
             to_send.append(transfer)
