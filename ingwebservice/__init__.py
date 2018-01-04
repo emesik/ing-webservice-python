@@ -9,6 +9,8 @@ import zeep
 from zeep.client import Client
 from zeep.transports import Transport
 
+from .utils import purepolish
+
 class WSClient(object):
     endpoint = 'https://ws.ingbusinessonline.pl/ing-ccs/cdc00101?wsdl'
     cert = None
@@ -114,9 +116,9 @@ class WSClient(object):
                         }
                     },
                 'Cdtr': {
-                    'Nm': txf['account_holder_name'],
+                    'Nm': purepolish(txf['account_holder_name']),
                     'PstlAdr': {
-                        'AdrLine': txf.get('account_holder_address', ''),
+                        'AdrLine': purepolish(txf.get('account_holder_address', '')),
                         'Ctry': txf.get('account_holder_country', 'pl').upper(),
                         }
                     },
@@ -128,7 +130,7 @@ class WSClient(object):
                         }
                     },
                 'RmtInf': {
-                    'Ustrd': txf.get('description', '')[:140].strip(),
+                    'Ustrd': purepolish(txf.get('description', ''))[:140].strip(),
                     }
                 }
             to_send.append(transfer)
