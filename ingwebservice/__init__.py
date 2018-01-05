@@ -9,7 +9,7 @@ import zeep
 from zeep.client import Client
 from zeep.transports import Transport
 
-from .utils import purepolish
+from .utils import purepolish, cleanaddress
 
 class WSClient(object):
     endpoint = 'https://ws.ingbusinessonline.pl/ing-ccs/cdc00101?wsdl'
@@ -118,7 +118,7 @@ class WSClient(object):
                 'Cdtr': {
                     'Nm': purepolish(txf['account_holder_name']),
                     'PstlAdr': {
-                        'AdrLine': purepolish(txf.get('account_holder_address', '')),
+                        'AdrLine': cleanaddress(txf.get('account_holder_address', ''))[:35],
                         'Ctry': txf.get('account_holder_country', 'pl').upper(),
                         }
                     },
