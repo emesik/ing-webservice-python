@@ -2,16 +2,16 @@
 import re
 from unidecode import unidecode
 
+_VALIDCHAR=re.compile(u'[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9,/()\?\.\ -]')
+
 def purepolish(s):
     chars = []
     for c in s:
-        if c not in u'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzĄĆĘŁŃÓŚŹŻąćęłńóśźż-\' ':
+        if not _VALIDCHAR.match(c):
             c = unidecode(c)
         chars.append(c)
     return u''.join(chars)
 
 def cleanaddress(s):
-    return u''.join(
-        re.findall(
-            u'[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9,/\s]',
-            purepolish(s.replace('\\', '/'))))
+    # replace backslashes with forward slashes (a common mistake in addresses)
+    return purepolish(s.replace('\\', '/'))

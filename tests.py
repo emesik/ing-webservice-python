@@ -18,8 +18,8 @@ class FilterTest(unittest.TestCase):
 
     def test_cleanaddress(self):
         self.assertEqual(
-            cleanaddress(u'Obrońców Stalingradu 6\\66, Pcim'),
-            u'Obrońców Stalingradu 6/66, Pcim')
+            cleanaddress(u'Obrońców Stalingradu 6\\66, (00-666) Pcim.'),
+            u'Obrońców Stalingradu 6/66, (00-666) Pcim.')
         self.assertEqual(
             cleanaddress(u'Großbrücke'),
             u'Grossbrucke')
