@@ -2,13 +2,15 @@
 import re
 from unidecode import unidecode
 
-_VALIDCHAR=re.compile(u'[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9,/()\?\.\ -]')
+_VALIDCHAR=re.compile(u'[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9,\/()\?\.\ -]')
 
 def purepolish(s):
     chars = []
-    for c in s:
+    for c in s.replace('_', ' '):
         if not _VALIDCHAR.match(c):
             c = unidecode(c)
+            if not _VALIDCHAR.match(c):
+                continue
         chars.append(c)
     return u''.join(chars)
 

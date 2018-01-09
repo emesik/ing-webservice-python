@@ -8,13 +8,16 @@ class FilterTest(unittest.TestCase):
         self.assertEqual(purepolish(u'ZAŻÓŁĆ GĘŚLĄ JAŹŃ'), u'ZAŻÓŁĆ GĘŚLĄ JAŹŃ')
         self.assertEqual(
             purepolish(u'Mon aéroglisseur est plein d\'anguilles'),
-            u'Mon aeroglisseur est plein d\'anguilles')
+            u'Mon aeroglisseur est plein danguilles')
         self.assertEqual(
             purepolish(u'Det er fullt av ål i luftputebåten min'),
             u'Det er fullt av al i luftputebaten min')
         self.assertEqual(
             purepolish(u'Τὸ ἐμὸν αερόστρωμνον ἐγχελείων πλῆρές ἐστιν'),
             u'To emon aerostromnon egkheleion pleres estin')
+        self.assertEqual(
+            purepolish(u'Copywriting (Computer Protection_Mac_Windows | Quality)'),
+            u'Copywriting (Computer Protection Mac Windows  Quality)')
 
     def test_cleanaddress(self):
         self.assertEqual(
