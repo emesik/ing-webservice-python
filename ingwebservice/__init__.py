@@ -9,7 +9,7 @@ import zeep
 from zeep.client import Client
 from zeep.transports import Transport
 
-from .utils import purepolish, cleanaddress
+from .utils import charfilter, cleanaddress
 
 class WSClient(object):
     endpoint = 'https://ws.ingbusinessonline.pl/ing-ccs/cdc00101?wsdl'
@@ -116,9 +116,10 @@ class WSClient(object):
                         }
                     },
                 'Cdtr': {
-                    'Nm': purepolish(txf['account_holder_name']),
+                    'Nm': charfilter(txf['account_holder_name'], allow_polish=True),
                     'PstlAdr': {
-                        'AdrLine': cleanaddress(txf.get('account_holder_address', ''))[:35],
+                        'AdrLine': cleanaddress(
+                            txf.get('account_holder_address', ''), allow_polish=True)[:35],
                         'Ctry': txf.get('account_holder_country', 'pl').upper(),
                         }
                     },
@@ -130,7 +131,7 @@ class WSClient(object):
                         }
                     },
                 'RmtInf': {
-                    'Ustrd': purepolish(txf.get('description', ''))[:140].strip(),
+                    'Ustrd': charfilter(txf.get('description', ''), allow_polish=True)[:140].strip(),
                     }
                 }
             to_send.append(transfer)
@@ -165,6 +166,80 @@ class WSClient(object):
                                 },
                             'MmbId': dmstc_from_acc[2:10],
                             },
+                        }
+                    },
+                'CdtTrfTxInf': to_send,
+                }
+            }
+        document = doctype({'CstmrCdtTrfInitn': data})
+        resp = method(document['Document'])
+        return [(sts.TxSts, sts.AccptncDtTm) for sts in resp.OrgnlPmtInfAndSts[0].TxInfAndSts]
+
+    def transfer_sepa(self, account_number, transfers, initiator=''):
+        method = self.client.service.SEPATransfer
+        doctype = self.client.get_type('ns1:TransferRequestType')
+        _charfilter = re.compile(r'[^A-Za-z0-9/\-+()/\']')
+        now = datetime.now()
+        to_send = []
+        for txf in transfers:
+            transfer = {
+                'PmtId': {
+                    'EndToEndId': _charfilter.sub('',
+                            unidecode(txf.get('description', 'not provided').replace(u' ', u'_')))[:32],
+                    },
+                'Amt': {
+                    'InstdAmt': {
+                        '_value_1': txf['amount'],
+                        'Ccy': txf['currency'],
+                        },
+                    },
+                'Cdtr': {
+                    'Nm': charfilter(txf['account_holder_name']),
+                    'PstlAdr': {
+                        'AdrLine': cleanaddress(txf.get('account_holder_address', ''))[:35],
+                        'Ctry': txf.get('account_holder_country', 'pl').upper(),
+                        }
+                    },
+                'CdtrAcct': {
+                    'Id': {
+                        'IBAN': txf['account_number'],
+                        }
+                    },
+                'RmtInf': {
+                    'Ustrd': charfilter(txf.get('description', ''))[:140].strip(),
+                    },
+                'PmtTpInf': {
+                    'SvcLvl': {
+                        'Cd': 'SEPA',
+                        }
+                    },
+                }
+            to_send.append(transfer)
+        data = {
+            'GrpHdr': {
+                'MsgId': self.get_msg_id(),
+                'CreDtTm': now,
+                'NbOfTxs': len(transfers),
+                'InitgPty': {
+                    'Nm': initiator,
+                    },
+                },
+            'PmtInf': {
+                'PmtInfId': now.strftime('%Y%m%d%H%M%S'),
+                'PmtMtd': 'TRF',
+                'ReqdExctnDt': now.date(),
+                'Dbtr': {
+                    'Nm': self.company,
+                    },
+                'DbtrAcct': {
+                    'Id': {
+                        'IBAN': account_number,
+                        }
+                    },
+                'ChrgBr': 'SLEV',
+                'DbtrAgt': {
+                    'FinInstnId': {
+                        'BIC': 'ING',
                         }
                     },
                 'CdtTrfTxInf': to_send,
