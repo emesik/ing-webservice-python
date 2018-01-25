@@ -249,6 +249,9 @@ class WSClient(object):
         resp = method(document['Document'])
         return [(sts.TxSts, sts.AccptncDtTm) for sts in resp.OrgnlPmtInfAndSts[0].TxInfAndSts]
 
+    def transfer_swift(self, account_number, transfers, initiator=''):
+        raise NotImplementedError("SWIFT is not implemented")
+
 
 Transfer = namedtuple('Transfer', ['id',
                                    'type',
