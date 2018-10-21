@@ -12,7 +12,7 @@ from zeep.transports import Transport
 from .utils import charfilter, cleanaddress
 
 class WSClient(object):
-    endpoint = 'https://ws.ingbusinessonline.pl/ing-ccs/cdc00101?wsdl'
+    endpoint = 'https://ws.ingbusiness.pl/ing-ccs/cdc00101?wsdl'
     cert = None
     ca_cert = None
     key = None
