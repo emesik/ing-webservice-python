@@ -293,7 +293,7 @@ class History(object):
             if bool(creditor) == bool(debitor):
                 raise ValueError("Transfer {id} is both incoming and outgoing".format(**txndata))
             role = creditor or debitor
-            txndata['account_number'] = role.Id.Othr.Id
+            txndata['account_number'] = role.Id.IBAN or role.Id.Othr.Id
             party_data = details.RltdPties.Cdtr or details.RltdPties.Dbtr
             txndata['account_holder_name'] = party_data.Nm
             if hasattr(party_data, 'PstlAddr'):
