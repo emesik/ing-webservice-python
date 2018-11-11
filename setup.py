@@ -9,5 +9,5 @@ setup(
     author='emesik',
     author_email='michal@salaban.info',
     description='ING WebService wrapper',
-    install_requires=['zeep'],
+    install_requires=['zeep', 'unidecode'],
 )
