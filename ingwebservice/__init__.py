@@ -99,8 +99,11 @@ class WSClient(object):
             dmstc_to_acc = _country.sub('', txf['account_number'])
             transfer = {
                 'PmtId': {
-                    'EndToEndId': _charfilter.sub('',
-                            unidecode(txf.get('description', 'not provided').replace(u' ', u'_')))[:32],
+                    'EndToEndId': txf.get(
+                            'end2end_id',
+                            _charfilter.sub('',
+                                unidecode(txf.get('description', 'not provided')\
+                                    .replace(u' ', u'_')))[:32]),
                     },
                 'Amt': {
                     'InstdAmt': {
@@ -184,8 +187,11 @@ class WSClient(object):
         for txf in transfers:
             transfer = {
                 'PmtId': {
-                    'EndToEndId': _charfilter.sub('',
-                            unidecode(txf.get('description', 'not provided').replace(u' ', u'_')))[:32],
+                    'EndToEndId': txf.get(
+                            'end2end_id',
+                            _charfilter.sub('',
+                                unidecode(txf.get('description', 'not provided')\
+                                    .replace(u' ', u'_')))[:32]),
                     },
                 'Amt': {
                     'InstdAmt': {
@@ -264,7 +270,8 @@ Transfer = namedtuple('Transfer', ['id',
                                    'account_holder_name',
                                    'account_holder_address',
                                    'account_holder_country',
-                                   'transaction_name'])
+                                   'transaction_name',
+                                   'end2end_id'])
 
 
 class History(object):
@@ -288,6 +295,7 @@ class History(object):
             txndata['amount'] = txn.Amt._value_1
             txndata['currency'] = txn.Amt.Ccy
             txndata['transaction_name'] = "\n".join(details.RmtInf.Ustrd)
+            txndata['end2end_id'] = details.Refs.EndToEndId or ''
             creditor = getattr(details.RltdPties, 'CdtrAcct', None) # for charges
             debitor = getattr(details.RltdPties, 'DbtrAcct', None)  # for payments
             if bool(creditor) == bool(debitor):
