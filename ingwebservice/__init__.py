@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
 from datetime import datetime
+import logging
 import random
 import re
 from requests import Session
@@ -10,6 +11,8 @@ from zeep.client import Client
 from zeep.transports import Transport
 
 from .utils import charfilter, cleanaddress
+
+_log = logging.getLogger(__name__)
 
 class WSClient(object):
     endpoint = 'https://ws.ingbusiness.pl/ing-ccs/cdc00101?wsdl'
@@ -296,13 +299,15 @@ class History(object):
             txndata['currency'] = txn.Amt.Ccy
             txndata['transaction_name'] = "\n".join(details.RmtInf.Ustrd)
             txndata['end2end_id'] = details.Refs.EndToEndId or ''
-            creditor = getattr(details.RltdPties, 'CdtrAcct', None) # for charges
-            debitor = getattr(details.RltdPties, 'DbtrAcct', None)  # for payments
-            if bool(creditor) == bool(debitor):
-                raise ValueError("Transfer {id} is both incoming and outgoing".format(**txndata))
-            role = creditor or debitor
-            txndata['account_number'] = role.Id.IBAN or role.Id.Othr.Id
-            party_data = details.RltdPties.Cdtr or details.RltdPties.Dbtr
+            parties = details.RltdPties
+            other_party_acc = getattr(parties, 'CdtrAcct', None) if txn.CdtDbtInd == 'DBIT' \
+                else getattr(parties, 'DbtrAcct', None)
+            if other_party_acc:
+                txndata['account_number'] = other_party_acc.Id.IBAN or other_party_acc.Id.Othr.Id
+            else:
+                logging.warning("Transfer {id} has no account data for the other party.".format(**txndata))
+                txndata['account_number'] = None
+            party_data = parties.Cdtr if txn.CdtDbtInd == 'DBIT' else parties.Dbtr
             txndata['account_holder_name'] = party_data.Nm
             if hasattr(party_data, 'PstlAddr'):
                 txndata['account_holder_address'] = party_data.PstlAdr.AdrLine
@@ -310,7 +315,7 @@ class History(object):
             else:
                 txndata['account_holder_address'] = ''
                 txndata['account_holder_country'] = ''
-            if creditor:
+            if txn.CdtDbtInd == 'DBIT':
                 self.charges.append(Transfer(**txndata))
             else:
                 self.payments.append(Transfer(**txndata))
